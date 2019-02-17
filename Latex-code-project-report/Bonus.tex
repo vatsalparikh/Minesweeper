@@ -1,0 +1,147 @@
+\section{\textbf{Bonus: Chains of Influence}}
+\begin{itemize}
+\item 
+\textbf{Based on your model and implementation, how can you characterize and build this chain of influence? Hint: What are some `intermediate' facts along the chain of influence?}
+
+A new cell is discovered in the following 4 cases. Each time a cell is either marked as mine or as safe and pushed to the queue, we maintain a HashMap with key as the current node and value as the parent node from which we arrived at this deduction.
+
+\begin{enumerate}
+\item Random query to the user for a cell
+\item When the cell value is 0, all the surrounding cells are pushed into queue
+\item When the cell value is equal to the known adjacent mines, then all the adjacent unknown cells are pushed into the queue
+\item When the cell value -(minus) the adjacent mines is equal to the adjacent unknown cells, than all the adjacent unknown cells are marked as mines.
+\end{enumerate}
+
+The chain of influence is listed above in the play-by-play steps of a mine board.
+
+\item
+\textbf{What influences or controls the length of the longest chain of influence when solving a certain board?}
+
+The longest chain of influence is obtained when there is no necessity to query for a random cell apart from the first step. I.e., when the knowledge base expand continually and does not stop with a particular set of cells. In the above play-by-play procedure listed, the chain of influence is 1 big single tree. The depth keeps increasing when there is a one-to-one relation between the parent and child. But in the ideal minesweeper, this is not possible and so the case where the number of branches for a cell is minimal, the tree has the longest chain of influence.
+
+\item
+\textbf{How does the length of the chain of influence influence the efficiency of your solver?}
+
+If there is a single chain of influence with a long length, than it has a higher rate of success in solving the mine. The longer the chain of influence, the more the knowledge base expanded with almost 100\% confidence of not running into a mine. It can be seen from the above mentioned case that there is a single tree with a longer depth. Here the program doesn't have to call for any random cell. Therefore, we can certainly say that all the mines would be found without running into any.
+
+\item
+\textbf{Experiment. Can you find a board that yields particularly long chains of influence? How 	does this vary with the total number of mines?}
+
+The board that we have mentioned in the above case has a single long chain of influence. Here the knowledge base keeps expanding with the initial query of (5,5).
+
+\begin{tabular}{|c|c|c|c|c|c|c|c|c|c|}
+\hline
+  & 1 & 2 & 3 & 4 & 5 & 6 & 7 & 8 & 9\\
+\hline
+1 & 0 & 0 & 0 & 0 & 1 & 2 & 3 & * & 1\\
+\hline
+2 & 1 & 1 & 0 & 1 & 2 & * & * & 3 & 1\\
+\hline
+3 & * & 1 & 0 & 1 & * & 4 & * & 3 & 1\\
+\hline
+4 & 2 & 2 & 0 & 1 & 1 & 2 & 1 & 2 & *\\
+\hline
+5 & * & 1 & 0 & 0 & 0 & 0 & 0 & 1 & 1\\
+\hline
+6 & 1 & 1 & 0 & 0 & 1 & 1 & 1 & 0 & 0\\
+\hline
+7 & 0 & 0 & 0 & 0 & 1 & * & 2 & 1 & 0\\
+\hline
+8 & 0 & 0 & 0 & 0 & 1 & 2 & * & 1 & 0\\
+\hline
+9 & 0 & 0 & 0 & 0 & 0 & 1 & 1 & 1 & 0\\
+\hline
+\end{tabular}
+
+As the number of mines increase, the more likely to break the chain of influence. The mines block the expansion of the knowledge base and so the chain of influence gets cut short. At the same time if there are no mines, the chain of influence will have a single tree with large number of branches and a shorter length.
+
+\item
+\textbf{Experiment. Spatially, how far can the influence of a given cell travel?}
+
+Consider a simple mine board
+
+\begin{tabular}{|c|c|c|c|c|c|c|c|c|c|}
+\hline
+  & 1 & 2 & 3 & 4 & 5\\
+\hline
+1 & * & 1 & 0 & 1 & *\\
+\hline
+2 & 1 & 1 & 0 & 1 & 1\\
+\hline
+3 & 0 & 0 & 0 & 0 & 0\\
+\hline
+4 & 1 & 1 & 0 & 1 & 1\\
+\hline
+5 & * & 1 & 0 & 1 & *\\
+\hline
+\end{tabular}
+
+Here, the root for each cell in the chain of influence is (5,5) which is the first queried cell. So the influence can travel to all the cells of a mine board, provided the chain of influence doesn't break due to the lack of evolvement in the knowledge base.
+
+\item
+\textbf{Can you use this notion of minimizing the length of chains of influence to inform the decisions you make, to try to solve the board more efficiently?}
+
+With the implementation of BFS(queue), we can discover the mines quickly. Thus if we can minimize the length of the chains of influence by maximizing the branching factors, with the prior knowledge of total number of mines in the board, once we discover all these mines we can mark the rest of the cells as safe. This helps us to complete the minesweeper soon.
+
+\item
+\textbf{Is solving minesweeper hard?}
+
+Solving an ideal mine board, where the random query for a cell doesn't run into a mine, is easy. Our program efficiently solve any mine without running into trouble. The only problem it has is, when there are no more decisions that can be taken from the knowledge base, it queries the user for a random cell. There is a possibility that this cell can be a mine. Apart from this solving a mine board is not hard.
+\end{itemize}
+
+\section{\textbf{Bonus: Dealing with Uncertainty}}
+\begin{itemize}
+\item 
+\textbf{When a cell is selected to be uncovered, if the cell is `clear' you only reveal a clue about the surrounding cells
+with some probability. In this case, the information you receive is accurate, but it is uncertain when you will
+receive the information.}
+
+We can use the concept of binomial probability distribution and Bayes' theorem to include information about the probability of surrounding cells. We express the surrounding cell value in terms of a decimal number.
+
+If m = number of mines and c = number of cells then (c-1) choose (m-1) / (c choose m) gives the initial probability of the grid. For a 30 * 16 grid with 100 mines, the initial probability is (479 choose 99) / (480 choose 100) = 0.21.
+
+When we reveal 1 as clue at the first click, then the probability of clue cells is 1/8 = 12.5\% and the probability of all the remaining cells is 99/471 = 21.02\%.
+
+At the second click suppose we get 2 as clue adjacent to the first clue. We can have three configurations here, column 1 probability, column 2 and 3 probability, column 4 probability. 
+Now the probability of adjacent cells is given by
+
+\begin{tabular}{|c|c|c|c|}
+\hline
+a & b & b & c\\
+\hline
+a & 1 & 2 & c\\
+\hline
+a & b & b & c\\
+\hline
+\end{tabular}
+
+For a for a 30 * 16 grid the final probabilities after second click revealing 2 are as follows:
+
+\begin{tabular}{|c|c|c|c|}
+\hline
+0.05 & 0.21 & 0.21 & 0.39\\
+\hline
+0.05 & 1 & 2 & 0.39\\
+\hline
+.05 & 0.21 & 0.21 & 0.39\\
+\hline
+\end{tabular}
+
+This works well if we know the value of the clue cell. Thus working in tandem, probability and clue cell value together can efficiently solve minesweeper.
+
+However, in cases where we only reveal a clue about the surrounding cell in terms of probability and do not know the value of the clue cell (i.e., the actual number of mines in the surrounding cells), it becomes increasingly difficult to solve minesweeper only based on the probability values of surrounding cells, and the performance hit is extremely high. Because the game might end before we can even find and use the complete information from clue cells. Thus, it results in encountering mines more frequently and the game ends early.
+
+\item
+\textbf{When a cell is selected to be uncovered, the revealed clue is less than or equal to the true number of surrounding
+mines (chosen uniformly at random). In this case, the clue has some probability of underestimating the number
+of surrounding mines. Clues are always optimistic.}
+
+Whenever we uncover a clue, say for example 3, we can count how many remaining unknown cells there are, say 6, and predict with a uniform distribution that the true clue may be 3, 4, 5, 6 with each 1/4  probability. In this way, it will be much more difficult to solve large puzzles because we will have to consider exponentially more scenarios for each clue.
+
+\item
+\textbf{When a cell is selected to be uncovered, the revealed clue is greater than or equal to the true number of
+surrounding mines (chosen uniformly at random). In this case, the clue has some probability of overestimating
+the number of surrounding mines. Clues are always cautious.}
+
+Whenever we uncover a clue, say for example 3, we can count how many remaining unknown cells there are, say 6, and predict with a uniform distribution that the true clue may be min(3, 6), min(3,6) -1, ..., 1 each with 1/(min(3, 6) probability. Similarly, it will be much more difficult to solve large puzzles because we will have to consider exponentially more scenarios for each clue.
+\end{itemize}

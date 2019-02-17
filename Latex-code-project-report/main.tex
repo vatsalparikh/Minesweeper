@@ -1,0 +1,194 @@
+\documentclass[a4paper]{article}
+
+\usepackage{fullpage} % Package to use full page
+\usepackage{parskip} % Package to tweak paragraph skipping
+\usepackage{tikz} % Package for drawing
+\usepackage{amsmath}
+\usepackage{hyperref}
+\usepackage[margin=0.5in]{geometry}
+\usepackage[T1]{fontenc}
+\usepackage{upquote}
+
+\title{\textbf{CS 520: Assignment 2 - MineSweeper}}
+\author{\textbf{Raj Sundhar Ravichandran, Justin Chou, Vatsal Parikh}}
+\date{October 28, 2017}
+
+\begin{document}
+
+\maketitle
+\section{Source Code and Instructions}
+Git Repository: https://github.com/jyqchou/AI-Minesweeper\\
+\section{Representation}
+\textbf{How did you represent the board in your program, and how did you represent the information
+/ knowledge that clue cells reveal?}
+
+The board for clues is represented as a char 2-D array in cluesBoard, with length and width as mentioned by the user. We keep track whether we have found a clue in a cell through a second boolean 2D array named cluesFound. Finally, our knowledge base is contained in a 4D int array named probClue. For index probClue[a][b][c][d], this returns the clue corresponding to the truth statement for the clue located at [a][b] in cluesBoard, with [c][d] corresponding to the 3x3 matrix of the adjacent cells around it.
+
+\begin{enumerate}
+\item Initially we start with the center cell of the 2-D array (row/2 + 1 and col/2 + 1)
+\item If the value of the cell is 0, the mark all the adjacent cells as safe and push all the surrounding cells into a queue
+\item If its value is 9, then throw an error, it's a mine
+\item If it's neither 0 nor 9, then store the clue in the cluesBoard. We then expand our knowledge base and join truth statements to see if we can deduce with 100\% certainty the presence or absence of a mine in a cell. If a mine is present, we mark the cell as containing a mine. If a cell is clear, we add the cell to the queue
+\item Next we pop the next value from the queue to query a clear cell, if the queue is empty, then pick a random cell and repeat the steps 2 through 5
+\end{enumerate}
+
+\section{Inference}
+\textbf{When you collect a new clue, how do you model, process, compute the information you gain from
+it? i.e., how do you update your current state of knowledge based on that clue? Does your program deduce
+everything it can from a given clue before continuing? If so, how can you be sure of this, and if not, how could
+you consider improving it?}
+
+First we populate our knowledge base, probClue, with the local clues surrounding each cell. For each cell, we count the number of known adjacent mines, and the number of unknown cells. If the clue minus remaining number of mines to be found equals the number of adjacent unknown cells, then we are able to deduce that the remaining unknown cells are all mine and can flag them as so. Similarly, if the number of known adjacent mines equals the clue, then we can mark all of the adjacent unknown cells as clear and add them to the queue. With these 2 base cases, the deduction by the program is complete. We expand facts contained our knowledge base by combining truth statements that contain information about overlapping cells. In this way, we can further deduce mine or clear cells with 100\% certainty.
+
+Consider the following example:
+\begin{center}
+\begin{tabular}{|c|c|c|}
+\hline
+? & ? & ?\\
+\hline
+2 & 4 & ?\\
+\hline
+* & 2 & ?\\
+\hline
+\end{tabular}
+\end{center}
+
+Here the cell corresponding to (1,3) is definitely a mine. We deduce in our logic in the following manner.
+
+Since (3,1) is already a mine, the knowledge base in our system will be as follows:
+\begin{center}
+\begin{tabular}{|c|c|c|}
+\hline
+? & ? & ?\\
+\hline
+1 & 3 & ?\\
+\hline
+* & 1 & ?\\
+\hline
+\end{tabular}
+\end{center}
+
+(*) represents knowledge base corresponding to cell (2,2)
+\begin{center}
+\begin{tabular}{|c|c|c|}
+\hline
+-1 & -1 & -1\\
+\hline
+ 0 &  3 & -1\\
+\hline
+ 0 &  0 & -1\\
+\hline
+\end{tabular}
+\end{center}
+
+This basically represents:
+(-1) + (-1) + (-1) + 0 + (-1) + 0 + 0 + (-1) = 3
+
+Which means out of the 5 unknowns, 3 are mines and 2 are safe.
+
+(**) at (2,1)
+Here we are manipulating the cell (2,2), therefore this cell is populated with respect to that cell
+
+\begin{center}
+\begin{tabular}{|c|c|c|}
+\hline
+-1 & -1 & 0\\
+\hline
+ 1 &  0 &  0\\
+\hline
+ 0 &  0 &  0\\
+\hline
+\end{tabular}
+\end{center}
+
+
+(***) at (3,2)
+
+\begin{center}
+\begin{tabular}{|c|c|c|}
+\hline
+ 0 &  0 & -1\\
+\hline
+ 0 &  1 & -1\\
+\hline
+ 0 &  0 &  0\\
+\hline
+\end{tabular}
+\end{center}
+
+Which represent 
+(-1) + (-1) + 1 = 2
+
+We can then combine statements (*) and (**) by subtracting 
+(*) - (**) = (****)
+\begin{center}
+\begin{tabular}{|c|c|c|}
+\hline
+ 0 &  0 & -1\\
+\hline
+ 0 &  2 & -1\\
+\hline
+ 0 &  0 & -1\\
+\hline
+\end{tabular}
+\end{center}
+
+But we should subtract 3-1 = 2 and update that as the new clue.
+(****) - (***), we get (*****)
+\begin{center}
+\begin{tabular}{|c|c|c|}
+\hline
+ 0 &  0 & -1\\
+\hline
+ 0 &  1 & 0\\
+\hline
+ 0 &  0 &  0\\
+\hline
+\end{tabular}
+\end{center}
+
+Thus, when we gain a new clue, it is simple to recalculate the number of adjacent unknown cells  for the affected cells and see if we can deduce more mine or clear cells. We also see if this additional clue affects our knowledge by combining truth statements again.
+
+\section{Decisions}
+\textbf{Given a current state of the board, and a state of knowledge about the board, how does your
+program decide which cell to search next? Are there any risks, and how do you face them?}
+
+Each time we discover a safe cell, we push it to the queue and the successive iterations the system pops the next cell from the queue. But, when the queue is empty, which means that there is no further possibility to deduce the state of the mine, then we choose a random cell as the new cell to discover. One potential problem can be that, this cell can be a mine, which ends the game. This risk cannot be dealt with, as this is a probable scenario even a pro-player of minesweeper have to face. But in an ideal minesweeper game, the scenario that we cannot deduce any further and that we have to choose a random cell, will  be very rare. And the ideal game will not have a mine in this random cell. The random numbers are chosen only when there are no further possible moves left based on the current state of the game. We can improve this and minimize our risk of querying a mine by calculating the probabilities for each cell containing a mine based on its local clues.
+
+\section{Performance Question 1}
+\textbf{For a reasonably-sized board and a reasonable number of mines, include a play-by-play progression
+to completion or loss. Are there any points where your program makes a decision that you don't agree
+with? Are there any points where your program made a decision that surprised you? Why was your program
+able to make that decision?}
+
+We played the minesweeper game with ``Microsoft minesweeper'' program in side. We would look for the cell queried by our program in  ``Microsoft minesweeper''. 
+
+The most surprising thing about the moves made by our program was that, half-way through the game, since the ``Microsoft minesweeper'' game has a potential to open up many surrounding cells on clicking a cell, the cells opened up in  ``Microsoft minesweeper'' was more than our program's knowledge base. At this time one would expect our program to expand the knowledge base to the already known cells in  ``Microsoft minesweeper''. But to our surprise, the program called for a new cell which has not been opened yet in  ``Microsoft minesweeper'' game. For a second we were surprised and thought the program has a bug. But it turns out that our program has expanded the knowledge base and marked a few cells as mine and thus arrived at that particular cell. We felt that the program was few steps ahead of us.\\
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\input{Performance1.tex}
+
+\section{Performance Question 2}
+\textbf{For a fixed, reasonable size of board, what is the largest number of mines that your program can
+still usually solve? Where does your program struggle?}
+
+We solved our mine board with a  ``Microsoft minesweeper''. We played Easy(9*9), Medium(16*16) and Expert(30*16) modes. Our program was able to solve all these mines most of the time without any trouble. With a 9*9 mineboard it was able to solve upto 25 mines in a decent number of retries. Even above 25 mines, the program was able to solve few times, but the main problem it ran into was mine at a random query. It queried for a random cell when it couldn't expand its knowledge base further.
+
+\section{Efficiency}
+\textbf{What are some of the space or time constraints you run into in implementing this program? Are these problem specific constraints, or implementation specific constraints? In the case of implementation constraints, what could you improve on?
+}
+
+We store our knowledge base in a 4D array, but the last 2 dimensions are fixed to 3x3. Thus, our space complexity is $n^2$. When expanding our knowledge base, we also iterate through the affected part of the array, which takes constant time. We combine only truth statements that are interrelated or overlap, and this occurs after each clue $n^2$. Thus, time complexity is $n^2$. These are implementation constraints, but are impacted by specific problems. For instance, only grids with many mines may require extensive knowledge base expansion that will run close to $n^2$. When there are fewer mines, there are more clear cells for the program to query and joining truth statements is only necessary in fewer instances.
+
+\section{Improvements}
+\textbf{Consider augmenting your program's knowledge in the following way - when the user inputs the
+size of the board, they also input the total number of mines on the board. How can this information be modeled
+and included in your program, and used to inform action? How can you use this information to effectively
+improve the performance of your program, particularly in terms of the number of mines it can effectively solve.}
+
+With the knowledge of total number of mines on the board, we can improve the process once all the mines are identified. A global variable can be maintained to track this, and for each mine discovered, this variable is decremented. Once this value reaches 0, then we can skip the checking part and directly declare all the rest of the unexplored mines as safe cells. This improves the performance slightly as it skips the condition checking. We can also use the total amount of mines in the board to more accurately predict the probability of presence of mines in a particular cell, and can have better results when the algorithm is required to query a cell that we cannot be certain does not contain a mine.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\input{Bonus.tex}
+
+\end{document}
